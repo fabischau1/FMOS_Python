@@ -732,9 +732,12 @@ def check_wifi_status():
         is_connected = False
     file_path = r"C:\FMOS\System\security\root\rootuser"
     file_exists = os.path.exists(file_path)
+    devfile_path = r"C:\FMOS\System\security\devusr"
+    devfile_exists = os.path.exists(devfile_path)
     current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{CYAN}WiFi Connected: {is_connected}{RESET}")
     print(f"{RED}Root Permissions: {file_exists}{RESET}")
+    print(f"{MAGENTA}Developer Mode: {devfile_exists}{RESET}")
     print(f"{GREEN}Current Date and Time: {current_datetime}{RESET}")
 
 def runpy(command):
