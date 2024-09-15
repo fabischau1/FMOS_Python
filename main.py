@@ -32,6 +32,13 @@ WHITE = '\033[37m'
 RESET = '\033[0m'
 BASE_DIR = r"C:\FMOS"
 
+helphelp = f'''
+{GREEN}help commands{RESET}
+{GREEN}help system{RESET}
+{GREEN}help root{RESET}
+{GREEN}help devmode{RESET}
+'''
+
 systemlist = r'''
 usr
 - usr\Desktop
@@ -47,6 +54,26 @@ System
 Programms
 - Programms\fak
 - Programms\sys
+'''
+
+helproot = f'''
+{BLUE}Help: Root{RESET}
+
+{GREEN}What can you do with root?{RESET}
+{BRIGHT_GREEN}connect to FMOS system folders{RESET}
+{BRIGHT_GREEN}delete edit view and create files and folders in FMOS system folders{RESET}
+{BRIGHT_GREEN}enable developer mode (type help dev){RESET}
+'''
+
+helpdev = f'''
+{BLUE}Help: Dev Mode{RESET}
+
+{GREEN}What can you do with dev mode?{RESET}
+{BRIGHT_GREEN}run python files{RESET}
+{BRIGHT_GREEN}requires root to activate and deactivate{RESET}
+
+{YELLOW}How do i activate and deactivate developer mode?{RESET}
+{BRIGHT_YELLOW}you can find that if u type help commands{RESET}
 '''
 
 commandlist = f'''Commands:
@@ -138,6 +165,22 @@ commandlist = f'''Commands:
 {YELLOW}manual:{RESET} {BRIGHT_YELLOW}help with commands{RESET}
 {GREEN}usage:{RESET} {BRIGHT_GREEN}help system{RESET}
 {YELLOW}manual:{RESET} {BRIGHT_YELLOW}help lists the default file system{RESET}
+{GREEN}usage:{RESET} {BRIGHT_GREEN}help root{RESET}
+{YELLOW}manual:{RESET} {BRIGHT_YELLOW}helps with root{RESET}
+{GREEN}usage:{RESET} {BRIGHT_GREEN}help devmode{RESET}
+{YELLOW}manual:{RESET} {BRIGHT_YELLOW}helps with devmode{RESET}
+
+{BLUE}devmode:{RESET}
+{GREEN}usage:{RESET} {BRIGHT_GREEN}devmode on{RESET}
+{YELLOW}manual:{RESET} {BRIGHT_YELLOW}activates devmode{RESET}
+{GREEN}usage:{RESET} {BRIGHT_GREEN}devmode off{RESET}
+{YELLOW}manual:{RESET} {BRIGHT_YELLOW}activates devmode{RESET}
+
+{BLUE}run:{RESET}
+{GREEN}usage:{RESET} {BRIGHT_GREEN}run py *main.py{RESET}
+{YELLOW}manual:{RESET} {BRIGHT_YELLOW}runs python script in current folder{RESET}
+{GREEN}usage:{RESET} {BRIGHT_GREEN}run py usr\folder\main.py{RESET}
+{YELLOW}manual:{RESET} {BRIGHT_YELLOW}runs python script in specified folder{RESET}
 '''
 
 def bootlogo():
@@ -203,6 +246,12 @@ def fmosmainmenu():
             faklistall()
         elif command.startswith("help "):
             help(command)
+        elif command.startswith("run py "):
+            runpy(command)
+        elif command == "devmode on":
+            devmode_on()
+        elif command == "devmode off":
+            devmode_off()
         else:
             print(f"{RED}Command not recognized!{RESET}")
             
@@ -275,6 +324,43 @@ def mkdir(command):
 def is_rooted():
     root_file = os.path.join(BASE_DIR, r"System\security\root\rootuser")
     return os.path.isfile(root_file)
+    
+def is_devmode():
+    devfile = os.path.join(BASE_DIR, r"System\security\devusr")
+    return os.path.isfile(devfile)
+    
+def devmode_on():
+    if is_rooted():
+        devpath = r"System\security\devusr"
+        devfile = os.path.join(BASE_DIR, devpath)
+        try:
+            os.makedirs(os.path.dirname(devfile), exist_ok=True)
+            
+            with open(devfile, "w") as f:
+                f.write(" ")
+            print("Developer mode enabled.")
+        except Exception as e:
+            print(f"{BRIGHT_RED}ERROR: Failed to enable developer mode! {e}{RESET}")
+    else:
+        print(f"{BRIGHT_RED}ERROR: You are not rooted! You need to be rooted to access developer mode!{RESET}")
+        return
+
+
+def devmode_off():
+    if is_rooted():
+        devpath = r"System\security\devusr"
+        devfile = os.path.join(BASE_DIR, devpath)
+        try:
+            if os.path.exists(devfile):
+                os.remove(devfile)
+                print("Developer mode disabled.")
+            else:
+                print(f"{BRIGHT_RED}ERROR: Developer mode is not enabled!{RESET}")
+        except Exception as e:
+            print(f"{BRIGHT_RED}ERROR: Failed to disable developer mode! {e}{RESET}")
+    else:
+        print(f"{BRIGHT_RED}ERROR: You are not rooted! You need to be rooted to access developer mode!{RESET}")
+        return
     
 def check_password():
     password_file = os.path.join(BASE_DIR, r"System\security\rootpass.md")
@@ -403,19 +489,16 @@ def change_directory(command):
 
 def save_note(filepath, content):
     try:
-        # Überprüfen, ob der Pfad in einem wichtigen Verzeichnis liegt
-        sensitive_dirs = ['System', 'System\\security', 'System\\temp', 'System\\trash', 'System\\sys', 'System\\boot', 'Programms\\sys']
+        sensitive_dirs = ['System', 'System\\security', 'System\\temp', 'System\\trash', 'System\\sys', 'System\\boot', 'Programms\\sys', 'Programms\\fak']
         if any(filepath.startswith(os.path.join(BASE_DIR, sensitive_dir)) for sensitive_dir in sensitive_dirs):
             if not is_rooted():
                 print(f"{BRIGHT_RED}ERROR: You are not rooted and cannot save to this directory!{RESET}")
                 return
 
-        # Sicherstellen, dass das Verzeichnis existiert
         directory = os.path.dirname(filepath)
         if not os.path.exists(directory):
             os.makedirs(directory)
 
-        # Notiz speichern
         with open(filepath, 'w') as file:
             file.write(content)
         print(f"{BRIGHT_GREEN}Note saved to {filepath}{RESET}")
@@ -424,7 +507,6 @@ def save_note(filepath, content):
 
 def note_command(command):
     try:
-        # Bestimme den Pfad und den Dateinamen
         parts = command[5:].strip().split(' ', 1)
         if len(parts) == 0:
             print(f"{BRIGHT_RED}Error: No file path or name provided!{RESET}")
@@ -436,13 +518,10 @@ def note_command(command):
         else:
             initial_text = ""
 
-        # Bestimme den Speicherort der Datei
         if file_path.startswith('*'):
-            # Entferne das '*' und speichere im aktuellen Verzeichnis
             final_path = os.path.join(os.getcwd(), file_path[1:])
         else:
-            # Verwende den angegebenen Pfad direkt
-            final_path = os.path.abspath(os.path.join(BASE_DIR, file_path))  # Absoluten Pfad basierend auf BASE_DIR erstellen
+            final_path = os.path.abspath(os.path.join(BASE_DIR, file_path))
 
         # Eingabe der Notiz
         print(f"{GREEN}FILE EDITOR{RESET}")
@@ -629,8 +708,20 @@ def help(command):
         print(systemlist)
         pause = input("Press enter to continue...")
         os.system('cls')
+    elif helps == "root":
+        os.system('cls')
+        print(helproot)
+        pause = input("Press enter to continue...")
+        os.system('cls')
+    elif helps == "devmode":
+        os.system('cls')
+        print(helpdev)
+        pause = input("Press enter to continue...")
+        os.system('cls')
     else:
         print(f"{RED}ERROR:{RESET} {BRIGHT_RED}sorry i cant help you with that.{RESET}")
+        print(f"{GREEN}Use 1 of these commands:{RESET}")
+        print(helphelp)
 
 def check_wifi_status():
     is_connected = False
@@ -645,6 +736,34 @@ def check_wifi_status():
     print(f"{CYAN}WiFi Connected: {is_connected}{RESET}")
     print(f"{RED}Root Permissions: {file_exists}{RESET}")
     print(f"{GREEN}Current Date and Time: {current_datetime}{RESET}")
+
+def runpy(command):
+    pyname = command[7:].strip()
+    if pyname.startswith('*'):
+        pynamefinal = os.path.join(os.getcwd(), pyname[1:])
+    else:
+        pynamefinal = os.path.abspath(os.path.join(BASE_DIR, pyname))
+    
+    if is_devmode():
+    
+        if not pynamefinal.endswith('.py'):
+            print(f"{BRIGHT_RED}ERROR: The file must be a Python script with a .py extension{RESET}")
+            return
+        sensitive_dirs = ['System', 'System\\security', 'System\\temp', 'System\\trash', 'System\\sys', 'System\\boot', 'Programms\\sys', 'Programms\\fak']
+        if any(pynamefinal.startswith(os.path.join(BASE_DIR, sensitive_dir)) for sensitive_dir in sensitive_dirs):
+            if not is_rooted():
+                print(f"{BRIGHT_RED}ERROR: You are not rooted and cannot save to this directory!{RESET}")
+                return
+    
+        current_dir = os.getcwd()
+        pypath = pynamefinal
+        os.system('cls')
+        process = subprocess.Popen(['python', pypath])
+        process.wait()
+        os.system('cls')
+        print(f"{GREEN}{pypath} has finished executing.{RESET}")
+    else:
+        print(f"{BRIGHT_RED}ERROR: You need to have developer mode enabled to run Python scripts (more info at help devmode){RESET}")
 
 if os.name == 'nt':
     os.system('')
